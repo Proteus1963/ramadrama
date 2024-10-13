@@ -5,7 +5,7 @@ const tmdb = require('./tmdb');
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 2000;
+const PORT = process.env.PORT || 7000;
 
 // Manifesto dell'addon per Stremio
 app.get('/manifest.json', (req, res) => {
