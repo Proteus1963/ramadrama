@@ -1,64 +1,54 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const scraper = require('./scraper');
-const tmdb = require('./tmdb');
-
-dotenv.config();
+const fetch = require('node-fetch');
 const app = express();
-const PORT = process.env.PORT || 7000;
 
-// Manifesto dell'addon per Stremio
-app.get('/manifest.json', (req, res) => {
-    res.json({
-        id: "stremio-addon-korean-series",
-        version: "1.0.0",
-        name: "Korean Series Addon",
-        description: "Un addon per recuperare le serie coreane da Rama Oriental Fansub e integrarli con TMDB.",
-        resources: ["catalog"],
-        types: ["series"],
-        catalogs: [{
-            type: "series",
-            id: "rama_korean_series"
-        }],
-        idPrefixes: ["tt"]
-    });
-});
+// Carica la chiave API di TMDB dalla variabile di ambiente
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
-// Endpoint per il catalogo delle serie coreane
+const BASE_URL = 'https://ramaorientalfansub.tv/paese/corea-del-sud/';
+
+// Funzione per ottenere i dettagli di TMDB
+async function getTMDBDetails(id) {
+    const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&language=en-US`;
+    const response = await fetch(url);
+    return response.json();
+}
+
+// Endpoint per il catalogo
 app.get('/catalog/series/rama_korean_series.json', async (req, res) => {
     try {
-        const seriesList = await scraper.scrapeSeries();
-        const metas = [];
+        const response = await fetch(BASE_URL);
+        const html = await response.text();
 
-        for (const series of seriesList) {
-            const tmdbInfo = await tmdb.getTmdbDetails(series.title);
-            if (tmdbInfo) {
-                metas.push({
-                    id: tmdbInfo.id.toString(),
-                    type: 'series',
-                    name: tmdbInfo.name,
-                    poster: tmdbInfo.poster_path,
-                    background: tmdbInfo.poster_path,
-                    description: tmdbInfo.overview,
-                    videos: [{ url: series.url }]
-                });
-            }
-        }
+        // Parsing HTML per trovare i metadati dei titoli
+        const metas = parseHtmlToMetas(html); // Dovrai implementare questa funzione
 
-        res.json({ metas });
+        // Aggiungere i dettagli di TMDB ai titoli
+        const metasWithDetails = await Promise.all(
+            metas.map(async (meta) => {
+                const tmdbData = await getTMDBDetails(meta.tmdbId);  // Usa l'ID TMDB corrispondente
+                return {
+                    ...meta,
+                    poster: `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}`,
+                    description: tmdbData.overview,
+                };
+            })
+        );
+
+        res.json({ metas: metasWithDetails });
     } catch (error) {
-        console.error("Errore durante il recupero del catalogo", error);
-        res.status(500).json({ error: "Errore interno del server" });
+        console.error('Errore nel recupero del catalogo:', error);
+        res.status(500).json({ error: 'Errore nel recupero del catalogo' });
     }
 });
 
-// Health check
+// Funzione di salute per verificare il funzionamento dell'addon
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.send('Addon is working!');
 });
 
-// Avvia il server
-app.listen(PORT, () => {
-    console.log(`Server in esecuzione su http://localhost:${PORT}`);
+// Porta su cui l'app verrà eseguita
+const port = process.env.PORT || 7000;
+app.listen(port, () => {
+    console.log(`Addon is running on port ${port}`);
 });
-
