@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Esporta la porta dell'applicazione
-EXPOSE 7000
+EXPOSE 10000
 
 # Definisci il comando di avvio
 CMD ["npm", "start"]
