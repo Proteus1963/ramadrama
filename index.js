@@ -7,6 +7,32 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
 const BASE_URL = 'https://ramaorientalfansub.tv/paese/corea-del-sud/';
 
+// Manifest JSON
+const manifest = {
+    id: "community.ramaorientalfansub",
+    version: "1.0.0",
+    name: "Rama Oriental Fansub",
+    description: "Addon per recuperare serie coreane da Rama Oriental Fansub",
+    types: ["series"],
+    catalogs: [
+        {
+            type: "series",
+            id: "rama_korean_series"
+        }
+    ],
+    resources: [
+        "catalog",
+        "meta"
+    ],
+    idPrefixes: ["tt"],
+    icon: "https://your-icon-url/icon.png" // Sostituisci con l'URL di un'icona valida
+};
+
+// Servire il manifest.json
+app.get('/manifest.json', (req, res) => {
+    res.json(manifest);
+});
+
 // Funzione per ottenere i dettagli di TMDB
 async function getTMDBDetails(id) {
     const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&language=en-US`;
@@ -48,7 +74,7 @@ app.get('/health', (req, res) => {
 });
 
 // Porta su cui l'app verrà eseguita
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 7000;
 app.listen(port, () => {
     console.log(`Addon is running on port ${port}`);
 });
