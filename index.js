@@ -48,7 +48,7 @@ app.get('/health', (req, res) => {
 });
 
 // Porta su cui l'app verrà eseguita
-const port = process.env.PORT || 7000;
+const port = process.env.PORT || 8000;
 app.listen(port, () => {
     console.log(`Addon is running on port ${port}`);
 });
