@@ -1,80 +1,64 @@
 const express = require('express');
-const fetch = require('node-fetch');
+const dotenv = require('dotenv');
+const scraper = require('./scraper');
+const tmdb = require('./tmdb');
+
+dotenv.config();
 const app = express();
+const PORT = process.env.PORT || 2000;
 
-// Carica la chiave API di TMDB dalla variabile di ambiente
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
-
-const BASE_URL = 'https://ramaorientalfansub.tv/paese/corea-del-sud/';
-
-// Manifest JSON
-const manifest = {
-    id: "community.ramaorientalfansub",
-    version: "1.0.0",
-    name: "Rama Oriental Fansub",
-    description: "Addon per recuperare serie coreane da Rama Oriental Fansub",
-    types: ["series"],
-    catalogs: [
-        {
+// Manifesto dell'addon per Stremio
+app.get('/manifest.json', (req, res) => {
+    res.json({
+        id: "stremio-addon-korean-series",
+        version: "1.0.0",
+        name: "Korean Series Addon",
+        description: "Un addon per recuperare le serie coreane da Rama Oriental Fansub e integrarli con TMDB.",
+        resources: ["catalog"],
+        types: ["series"],
+        catalogs: [{
             type: "series",
             id: "rama_korean_series"
-        }
-    ],
-    resources: [
-        "catalog",
-        "meta"
-    ],
-    idPrefixes: ["tt"],
-    icon: "https://your-icon-url/icon.png" // Sostituisci con l'URL di un'icona valida
-};
-
-// Servire il manifest.json
-app.get('/manifest.json', (req, res) => {
-    res.json(manifest);
+        }],
+        idPrefixes: ["tt"]
+    });
 });
 
-// Funzione per ottenere i dettagli di TMDB
-async function getTMDBDetails(id) {
-    const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&language=en-US`;
-    const response = await fetch(url);
-    return response.json();
-}
-
-// Endpoint per il catalogo
+// Endpoint per il catalogo delle serie coreane
 app.get('/catalog/series/rama_korean_series.json', async (req, res) => {
     try {
-        const response = await fetch(BASE_URL);
-        const html = await response.text();
+        const seriesList = await scraper.scrapeSeries();
+        const metas = [];
 
-        // Parsing HTML per trovare i metadati dei titoli
-        const metas = parseHtmlToMetas(html); // Dovrai implementare questa funzione
+        for (const series of seriesList) {
+            const tmdbInfo = await tmdb.getTmdbDetails(series.title);
+            if (tmdbInfo) {
+                metas.push({
+                    id: tmdbInfo.id.toString(),
+                    type: 'series',
+                    name: tmdbInfo.name,
+                    poster: tmdbInfo.poster_path,
+                    background: tmdbInfo.poster_path,
+                    description: tmdbInfo.overview,
+                    videos: [{ url: series.url }]
+                });
+            }
+        }
 
-        // Aggiungere i dettagli di TMDB ai titoli
-        const metasWithDetails = await Promise.all(
-            metas.map(async (meta) => {
-                const tmdbData = await getTMDBDetails(meta.tmdbId);  // Usa l'ID TMDB corrispondente
-                return {
-                    ...meta,
-                    poster: `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}`,
-                    description: tmdbData.overview,
-                };
-            })
-        );
-
-        res.json({ metas: metasWithDetails });
+        res.json({ metas });
     } catch (error) {
-        console.error('Errore nel recupero del catalogo:', error);
-        res.status(500).json({ error: 'Errore nel recupero del catalogo' });
+        console.error("Errore durante il recupero del catalogo", error);
+        res.status(500).json({ error: "Errore interno del server" });
     }
 });
 
-// Funzione di salute per verificare il funzionamento dell'addon
+// Health check
 app.get('/health', (req, res) => {
-    res.send('Addon is working!');
+    res.json({ status: 'ok' });
 });
 
-// Porta su cui l'app verrà eseguita
-const port = process.env.PORT || 7000;
-app.listen(port, () => {
-    console.log(`Addon is running on port ${port}`);
+// Avvia il server
+app.listen(PORT, () => {
+    console.log(`Server in esecuzione su http://localhost:${PORT}`);
 });
+
