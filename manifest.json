@@ -1,0 +1,19 @@
+{
+  "id": "community.ramaorientalfansub",
+  "version": "1.0.0",
+  "name": "Rama Oriental Fansub",
+  "description": "Addon per recuperare serie coreane da Rama Oriental Fansub",
+  "types": ["series"],
+  "catalogs": [
+    {
+      "type": "series",
+      "id": "rama_korean_series"
+    }
+  ],
+  "resources": [
+    "catalog",
+    "meta"
+  ],
+  "idPrefixes": ["tt"],
+  "icon": "https://your-icon-url/icon.png"
+}
